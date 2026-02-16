@@ -11,10 +11,10 @@ LOW_FOLDER = "TrafficCAM/raw/Complexity/Low_Complexity/Low_All"
 HIGH_FOLDER = "TrafficCAM/raw/Complexity/High_Complexity/High_All"
 
 MODELS = [
-    "yolov8n.pt",
-    "yolov8s.pt",
-    "yolov8m.pt",
-    "yolov8l.pt"
+    "yolo26n.pt",
+    "yolo26s.pt",
+    "yolo26m.pt",
+    "yolo26l.pt"
 ]
 
 # COCO vehicle classes
