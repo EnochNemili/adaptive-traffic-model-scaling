@@ -7,8 +7,8 @@ from ultralytics import YOLO
 # -------------------------------
 # CONFIGURATION
 # -------------------------------
-LOW_COMPLEXITY_DIR = "DAWNDataset/Low_Complexity"
-HIGH_COMPLEXITY_DIR = "DAWNDataset/High_Complexity"
+LOW_FOLDER = "DAWNDataset/Low_Complexity"
+HIGH_FOLDER = "DAWNDataset/High_Complexity"
 LIMIT = 67  # Ensuring balanced 1:1 comparison
 
 MODELS = ["yolo26n.pt", "yolo26s.pt", "yolo26m.pt", "yolo26l.pt"]
@@ -18,17 +18,17 @@ VEHICLE_CLASSES = ["car", "truck", "bus", "motorbike", "motorcycle"]
 # GROUND TRUTH PARSERS
 # -------------------------------
 
-def get_txt_ground_truth(txt_path):
-    """Counts lines in a YOLO .txt file."""
+def get_txt_gt(txt_path):
+    """Counts lines in a YOLO .txt file for DAWN."""
     if not os.path.exists(txt_path): return 0
     with open(txt_path, "r") as f:
         return sum(1 for line in f if line.strip())
 
-def get_xml_ground_truth(xml_path, filename):
-    """Counts <target> tags for a specific frame in UA-DETRAC XML."""
+def get_xml_gt(xml_path, filename):
+    """Counts <target> tags for a frame in UA-DETRAC XML."""
     if not os.path.exists(xml_path): return 0
     try:
-        # Assuming filename format img00001.jpg -> extract '1'
+        # Extract digits for frame number (e.g., img00063.jpg -> 63)
         frame_num = str(int(''.join(filter(str.isdigit, filename))))
         tree = ET.parse(xml_path)
         root = tree.getroot()
@@ -41,80 +41,90 @@ def get_xml_ground_truth(xml_path, filename):
     return 0
 
 # -------------------------------
-# EVALUATION ENGINE
+# EVALUATION ENGINE (Mirroring Colleague's Logic)
 # -------------------------------
 
-def evaluate_set(model, folder_path, is_xml=False):
-    total_acc = 0
-    count = 0
+def evaluate_folder(model, folder_path, is_xml=False):
+    total_accuracy = 0
+    total_time = 0
+    image_count = 0
     
-    # Filter for jpg files and limit to 67
-    images = [f for f in sorted(os.listdir(folder_path)) if f.endswith(".jpg")][:LIMIT]
+    # Filter and limit images to ensure balanced data
+    images = [f for f in sorted(os.listdir(folder_path)) if f.lower().endswith(".jpg")][:LIMIT]
 
     for img_name in images:
         img_path = os.path.join(folder_path, img_name)
         
-        # Get Ground Truth
+        # 1. Get Ground Truth
         if is_xml:
-            # Assumes one .xml file exists in the folder for the sequence
             xml_files = [f for f in os.listdir(folder_path) if f.endswith(".xml")]
             xml_path = os.path.join(folder_path, xml_files[0]) if xml_files else ""
-            gt = get_xml_ground_truth(xml_path, img_name)
+            ground_truth = get_xml_gt(xml_path, img_name)
         else:
             txt_path = img_path.replace(".jpg", ".txt")
-            gt = get_txt_ground_truth(txt_path)
+            ground_truth = get_txt_gt(txt_path)
 
-        # Run Inference
-        results = model(img_path, verbose=False, conf=0.5) # conf=0.5 to reduce noise
-        
-        pred = 0
-        for cls_id in results[0].boxes.cls:
-            if model.names[int(cls_id)] in VEHICLE_CLASSES:
-                pred += 1
+        # 2. Model Prediction + Timing
+        start_time = time.time()
+        results = model(img_path, verbose=False, conf=0.5)
+        inference_time = (time.time() - start_time) * 1000
+        total_time += inference_time
 
-        # Accuracy Ratio
-        if max(pred, gt) > 0:
-            total_acc += min(pred, gt) / max(pred, gt)
+        predicted = sum(1 for cls in results[0].boxes.cls if model.names[int(cls)] in VEHICLE_CLASSES)
+
+        # 3. Count-based accuracy ratio
+        if max(predicted, ground_truth) > 0:
+            accuracy = min(predicted, ground_truth) / max(predicted, ground_truth)
         else:
-            total_acc += 1.0
-        
-        count += 1
+            accuracy = 1.0  # both zero
 
-    return total_acc / count if count > 0 else 0
+        total_accuracy += accuracy
+        image_count += 1
+
+    avg_accuracy = total_accuracy / image_count if image_count > 0 else 0
+    avg_time = total_time / image_count if image_count > 0 else 0
+
+    return avg_accuracy, avg_time
 
 # -------------------------------
 # MAIN EXECUTION
 # -------------------------------
 
+print(f"\n=========== FINAL EVALUATION ({LIMIT} vs {LIMIT}) ===========\n")
+
 low_results = []
 high_results = []
-model_labels = ["Nano", "Small", "Medium", "Large"]
 
-for m_name in MODELS:
-    print(f"Evaluating {m_name}...")
-    model = YOLO(m_name)
-    
-    low_acc = evaluate_set(model, LOW_COMPLEXITY_DIR, is_xml=True)
-    high_acc = evaluate_set(model, HIGH_COMPLEXITY_DIR, is_xml=False)
-    
+for model_name in MODELS:
+    print(f"Evaluating model: {model_name}")
+    model = YOLO(model_name)
+
+    # UA-DETRAC is XML (is_xml=True), DAWN is TXT (is_xml=False)
+    low_acc, low_time = evaluate_folder(model, LOW_FOLDER, is_xml=True)
+    high_acc, high_time = evaluate_folder(model, HIGH_FOLDER, is_xml=False)
+
     low_results.append(low_acc)
     high_results.append(high_acc)
 
+    print(f"  Low Complexity  -> Accuracy: {low_acc:.4f} | Avg Time: {low_time:.2f} ms")
+    print(f"  High Complexity -> Accuracy: {high_acc:.4f} | Avg Time: {high_time:.2f} ms")
+    print("-" * 54)
+
 # -------------------------------
-# PLOTTING
+# RELATIVE IMPROVEMENT ANALYSIS
 # -------------------------------
 
-plt.figure(figsize=(8, 5))
-plt.plot(model_labels, low_results, marker='o', label="Low Complexity (UA-DETRAC)", color='blue')
-plt.plot(model_labels, high_results, marker='o', label="High Complexity (DAWN)", color='red')
+print("\n=========== RELATIVE IMPROVEMENT ANALYSIS ===========")
 
-plt.title(f"Model Size vs Accuracy (n={LIMIT} balanced)")
-plt.xlabel("Model Size")
-plt.ylabel("Accuracy Ratio")
-plt.ylim(0, 1.1)
-plt.grid(True, linestyle='--')
-plt.legend()
-plt.savefig("new_experiment_results.png")
-plt.show()
+low_gain = low_results[-1] - low_results[0]
+high_gain = high_results[-1] - high_results[0]
 
-print("\nDone! Graph saved as 'new_experiment_results.png'")
+low_relative = (low_gain / low_results[0]) * 100 if low_results[0] > 0 else 0
+high_relative = (high_gain / high_results[0]) * 100 if high_results[0] > 0 else 0
+
+print(f"Low Complexity Absolute Gain:  {low_gain:.4f}")
+print(f"High Complexity Absolute Gain: {high_gain:.4f}")
+print("-" * 54)
+print(f"Low Complexity Relative Gain:  {low_relative:.2f}%")
+print(f"High Complexity Relative Gain: {high_relative:.2f}%")
+print("====================================================\n")
