@@ -41,7 +41,7 @@ def get_xml_gt(xml_path, filename):
     return 0
 
 # -------------------------------
-# EVALUATION ENGINE (Mirroring Colleague's Logic)
+# EVALUATION ENGINE 
 # -------------------------------
 
 def evaluate_folder(model, folder_path, is_xml=False):
