@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Virtual environment
+venv/
+
+# Model weights
+*.pt
+
+# Raw datasets
+TrafficCAM/raw/
+
+# Plots and generated outputs
+execution - plots/
+
+# Zip files
+*.zip
+
