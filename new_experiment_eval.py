@@ -12,7 +12,7 @@ HIGH_FOLDER = "DAWNDataset/High_Complexity"
 LIMIT = 67  # Ensuring balanced 1:1 comparison
 
 MODELS = ["yolo26n.pt", "yolo26s.pt", "yolo26m.pt", "yolo26l.pt"]
-VEHICLE_CLASSES = ["car", "truck", "bus", "motorbike", "motorcycle"]
+VEHICLE_CLASSES = ["car", "truck", "bus", "motorbike", "vehicle"]
 
 # -------------------------------
 # GROUND TRUTH PARSERS
