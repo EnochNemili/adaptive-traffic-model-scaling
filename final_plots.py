@@ -23,7 +23,8 @@ GW_BLUE = "#033C5A"
 GW_GOLD = "#FFC72C"
 
 # Unified Vehicle Classes for F1 standardization
-VEHICLE_CLASSES = ["car", "truck", "bus", "motorbike", "vehicle"]
+#VEHICLE_CLASSES = ["car", "truck", "bus", "motorbike", "vehicle"]
+VEHICLE_CLASSES = ["car", "truck", "bus", "motorbike", "motorcycle", "vehicle", "lcv", "lmv", "auto"]
 
 def get_gt_count(img_path, dataset_type):
     """Handles JSON (TrafficCAM) vs TXT (DAWN)"""
@@ -52,7 +53,7 @@ def evaluate_scenario(model_list, folder_path, dataset_type):
             
             # 1. Inference + Timing
             start = time.time()
-            results = model(img_path, verbose=False, conf=0.5)
+            results = model(img_path, verbose=False, conf=0.25)
             img_times.append((time.time() - start) * 1000)
 
             # 2. Prediction Count (Vehicle-Only)
