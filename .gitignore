@@ -1,18 +1,23 @@
-# macOS
-.DS_Store
+# Python
+__pycache__/
+*.pyc
 
-# Virtual environment
+# Virtual Envs
 venv/
+yolov6_env/
 
-# Model weights
-*.pt
+# YOLO outputs
+runs/
+YOLOv6/
 
-# Raw datasets
-TrafficCAM/raw/
+# Datasets
+datasets/
 
-# Plots and generated outputs
-execution - plots/
+# Old figures
+figure_yolo/
+f1_tradeoff_figures/
+skipcomp_figures/
 
-# Zip files
-*.zip
+# Mac
+.DS_Store
 
