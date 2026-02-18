@@ -20,7 +20,7 @@ GW_BLUE = "#033C5A"
 GW_GOLD = "#FFC72C"
 
 # Consistent Vehicle Classes for Grant Consistency
-VEHICLE_CLASSES = ["car", "truck", "bus", "motorbike", "motorcycle", "vehicle"]
+VEHICLE_CLASSES = ["car", "truck", "bus", "motorbike", "vehicle"]
 
 def get_txt_labels(txt_path):
     if not os.path.exists(txt_path): return []
