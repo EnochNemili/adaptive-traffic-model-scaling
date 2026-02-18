@@ -22,12 +22,12 @@ MODELS_V26 = ["yolo26n.pt", "yolo26s.pt", "yolo26m.pt", "yolo26l.pt"]
 GW_BLUE = "#033C5A"
 GW_GOLD = "#FFC72C"
 
-# Unified classes across YOLO and TrafficCAM
+# Unified classes for Vehicle-Only filtering
 VEHICLE_CLASSES = ["car", "truck", "bus", "motorcycle", "motorbike", "vehicle", "auto", "lcv", "lmv"]
-IOU_THRESHOLD = 0.5 # standard for F1
+IOU_THRESHOLD = 0.5  # Enoch's standardized threshold
 
 # -------------------------------
-# SPATIAL LOGIC
+# SPATIAL MATCHING LOGIC
 # -------------------------------
 def compute_iou(box1, box2):
     x1, y1 = max(box1[0], box2[0]), max(box1[1], box2[1])
@@ -40,7 +40,7 @@ def compute_iou(box1, box2):
     return intersection / union if union > 0 else 0
 
 def get_spatial_gt(img_path, dataset_type):
-    """Extracts bounding box coordinates [x_min, y_min, x_max, y_max]"""
+    """Aligns JSON (TrafficCAM) and TXT (DAWN) coordinates"""
     boxes = []
     if dataset_type == "trafficcam":
         json_path = img_path.replace(".jpg", ".json")
@@ -51,9 +51,9 @@ def get_spatial_gt(img_path, dataset_type):
                     if shape["label"].lower() in VEHICLE_CLASSES:
                         pts = np.array(shape["points"])
                         boxes.append([pts[:,0].min(), pts[:,1].min(), pts[:,0].max(), pts[:,1].max()])
-    else: # DAWN TXT uses normalized [class, x_center, y_center, w, h]
+    else: # DAWN Fix: De-normalize YOLO TXT coordinates
         img = cv2.imread(img_path)
-        if img is None: return [] # Safety check
+        if img is None: return []
         h, w, _ = img.shape
         txt_path = img_path.replace(".jpg", ".txt")
         if os.path.exists(txt_path):
@@ -61,13 +61,10 @@ def get_spatial_gt(img_path, dataset_type):
                 for line in f:
                     parts = line.strip().split()
                     if len(parts) < 5: continue
-                    # DAWN is [class, x_center, y_center, width, height]
                     cx, cy, bw, bh = map(float, parts[1:])
-                    # Convert to absolute pixel coordinates for IoU matching
-                    x_min = (cx - bw/2) * w
-                    y_min = (cy - bh/2) * h
-                    x_max = (cx + bw/2) * w
-                    y_max = (cy + bh/2) * h
+                    # Convert [center_x, center_y, w, h] to [x_min, y_min, x_max, y_max]
+                    x_min, y_min = (cx - bw/2) * w, (cy - bh/2) * h
+                    x_max, y_max = (cx + bw/2) * w, (cy + bh/2) * h
                     boxes.append([x_min, y_min, x_max, y_max])
     return boxes
 
@@ -83,15 +80,16 @@ def evaluate_scenario(model_list, folder_path, dataset_type):
             img_path = os.path.join(folder_path, img_name)
             gt_boxes = get_spatial_gt(img_path, dataset_type)
             
+            # Timing and Inference
             start = time.time()
             results = model(img_path, verbose=False, conf=0.25)
             img_times.append((time.time() - start) * 1000)
 
-            # Filter vehicle-only predictions
+            # Extract spatial predictions
             pred_boxes = [b.xyxy[0].tolist() for b in results[0].boxes 
                           if any(v in model.names[int(b.cls)].lower() for v in VEHICLE_CLASSES)]
 
-            # One-to-one Spatial Matching
+            # Detection-Level Matching (Greedy IoU)
             matched_gt = set()
             tp, fp = 0, 0
             for p in pred_boxes:
@@ -124,12 +122,14 @@ def evaluate_scenario(model_list, folder_path, dataset_type):
 
 def plot_save(v8_data, v26_data, title, filename):
     plt.figure(figsize=(8, 6))
-    plt.plot(v26_data[1], v26_data[0], 'o-', color=GW_BLUE, label="YOLOv26 (Target)", lw=2)
+    plt.plot(v26_data[1], v26_data[0], 'o-', color=GW_BLUE, label="YOLOv26 (Grant Target)", lw=2)
     plt.plot(v8_data[1], v8_data[0], 'o-', color=GW_GOLD, label="YOLOv8 (Baseline)", lw=2)
-    plt.xlabel("Average Inference Time (ms)"); plt.ylabel("F1 Score (IoU=0.5)")
-    plt.title(title, fontweight="bold"); plt.legend(); plt.grid(True, linestyle=':', alpha=0.6)
+    plt.xlabel("Average Inference Time (ms)")
+    plt.ylabel("True F1 Score (IoU = 0.5)")
+    plt.title(title, fontweight="bold")
+    plt.legend()
+    plt.grid(True, linestyle=':', alpha=0.6)
     plt.savefig(os.path.join(OUTPUT_DIR, f"{filename}.png"), dpi=300)
-    plt.savefig(os.path.join(OUTPUT_DIR, f"{filename}.pdf"))
     plt.close()
 
 if __name__ == "__main__":
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         (DAWN_FOLDER, "dawn", "Bad Weather (DAWN)", "bad_weather")
     ]
     for folder, d_type, title, fname in scenarios:
+        print(f"Evaluating {title}...")
         v8_res = evaluate_scenario(MODELS_V8, folder, d_type)
         v26_res = evaluate_scenario(MODELS_V26, folder, d_type)
         plot_save(v8_res, v26_res, title, fname)
-    print(f"\nAll 3 graphs saved to /{OUTPUT_DIR}")
