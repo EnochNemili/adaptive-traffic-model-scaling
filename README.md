@@ -32,7 +32,6 @@ TrafficCAM/
       - Low_All/
     - High_Complexity/
       - High_All/
-- results/ (if exists)
 
 DAWNDataset/
 - Complexity/
