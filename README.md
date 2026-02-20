@@ -93,8 +93,6 @@ Our pipeline is synchronized to a unified research standard to ensure consistenc
 3. Inference Settings: Confidence threshold set to 0.25.Coordinate Systems: Automatically de-normalizes DAWN TXT coordinates to absolute pixels for spatial accuracy.
 
 ## Result Data
-```markdown
-### ## Standardized F1 Results (IoU=0.5)
 
 | Model | Low Complexity | High Traffic | Bad Weather |
 | :--- | :---: | :---: | :---: |
