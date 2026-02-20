@@ -25,11 +25,16 @@ Average inference time per image (ms) is also recorded.
 
 ## Repository Structure
 
-TrafficCAM/raw/Complexity/
-    ├── Low_Complexity/Low_All
-    └── High_Complexity/High_All
+TrafficCAM/
+└── raw/
+    └── Complexity/
+        ├── Low_Complexity/
+        │   └── Low_All/
+        └── High_Complexity/
+            └── High_All/
 
 DAWNDataset/
+└── Complexity/
     ├── Low_Complexity/
     └── High_Complexity/
 
@@ -88,11 +93,15 @@ Our pipeline is synchronized to a unified research standard to ensure consistenc
 3. Inference Settings: Confidence threshold set to 0.25.Coordinate Systems: Automatically de-normalizes DAWN TXT coordinates to absolute pixels for spatial accuracy.
 
 ## Result Data
-Model   |Low Complexity |High Traffic   |Bad Weather
-yolov8n |0.7093         |0.4020         |0.6298
-yolov8l |0.7836         |0.5384         |0.7417
-yolo26n |0.6756         |0.3648         |0.5567
-yolo26l |0.7710         |0.5342         |0.6811
+```markdown
+### ## Standardized F1 Results (IoU=0.5)
+
+| Model | Low Complexity | High Traffic | Bad Weather |
+| :--- | :---: | :---: | :---: |
+| **yolov8n** | 0.7093 | 0.4020 | 0.6298 |
+| **yolov8l** | 0.7836 | 0.5384 | 0.7417 |
+| **yolo26n** | 0.6756 | 0.3648 | 0.5567 |
+| **yolo26l** | 0.7710 | 0.5342 | 0.6811 |
 
 ## Plots
 All three plots can be found in final_plots_all_3 folder.
